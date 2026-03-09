@@ -1,4 +1,4 @@
-﻿import { AlertSeverity, AlertStatus, OrderStatus, ServiceStatus, ShiftNoteVisibility, TaskStatus, UserRole } from "@prisma/client";
+﻿import { AlertSeverity, AlertStatus, OrderStatus, ServiceStatus, ShiftNoteVisibility, TaskStatus } from "@prisma/client";
 
 import {
   DashboardActivity,
@@ -283,5 +283,6 @@ export function OperationalSummaryPanel({ summaries }: { summaries: OperationalS
     </Card>
   );
 }
+
 
 

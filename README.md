@@ -1,24 +1,24 @@
-# Antilodo Operations App (Scaffold)
+# Antilodo Operations App
 
-Production-oriented scaffold for a restaurant operations web app using Next.js App Router, TypeScript, Tailwind, shadcn/ui, Prisma, PostgreSQL, and Auth.js (NextAuth credentials).
+Production-oriented restaurant operations web app built with Next.js App Router, TypeScript, Tailwind, shadcn/ui, Prisma, PostgreSQL, and Auth.js credentials.
 
 ## Stack
 
 - Next.js (App Router)
 - React + TypeScript
-- Tailwind CSS + shadcn/ui components
+- Tailwind CSS + shadcn/ui
 - Prisma + PostgreSQL
-- Auth.js (NextAuth) with role-aware sessions
+- Auth.js (credentials)
 
-## Implemented in this scaffold
+## Included
 
-- Public landing page at `/`
-- Login route at `/login`
-- Protected operational route groups
-- Role-based route protection middleware
-- Role-based navigation and dashboard shells
-- Prisma schema for operational entities
-- Seed script with realistic demo users and demo operational data
+- Public landing page (`/`)
+- Login route (`/login`)
+- Role-protected operational routes
+- Role-based dashboards
+- Core modules: orders, services, schedules, shift notes, tasks, alerts
+- Management overview and activity/audit history
+- Realistic interconnected demo seed data
 
 ## Roles
 
@@ -28,55 +28,77 @@ Production-oriented scaffold for a restaurant operations web app using Next.js A
 - Manager
 - General Manager
 
-## Demo Users
+## Demo Credentials
 
-All demo users use password: `DemoPass123!`
+All demo users share the same password:
 
-- `head.chef@antilodo.app`
-- `sous.chef@antilodo.app`
-- `floor.manager@antilodo.app`
-- `manager@antilodo.app`
-- `gm@antilodo.app`
+- Password: `DemoPass123!`
+
+Users:
+
+- Head Chef: `head.chef@antilodo.app`
+- Sous Chef: `sous.chef@antilodo.app`
+- Floor Manager: `floor.manager@antilodo.app`
+- Manager: `manager@antilodo.app`
+- General Manager: `gm@antilodo.app`
 
 ## Local Setup
 
-1. Copy env values:
-
-```bash
-cp .env.example .env
-```
-
-2. Install dependencies:
+1. Install dependencies
 
 ```bash
 npm install
 ```
 
-3. Generate Prisma client:
+2. Configure environment
+
+```bash
+cp .env.example .env
+```
+
+3. Generate Prisma client
 
 ```bash
 npm run prisma:generate
 ```
 
-4. Push schema and seed data:
+4. Push schema and seed demo environment
 
 ```bash
 npm run db:push
 npm run db:seed
 ```
 
-5. Run app:
+5. Start development server
 
 ```bash
 npm run dev
 ```
 
+## Demo Environment Notes
+
+Seed data is coherent and interconnected across all modules:
+
+- Multiple services (completed, active, planned)
+- Orders linked to services with realistic statuses
+- Schedules assigned by role and service window
+- Shift notes linked to services/schedules and authored by role users
+- Tasks linked to users/services/orders
+- Alerts linked to reporter/owner/service/order/task when relevant
+- Activity history entries with valid entity references and before/after payloads
+
+## Quick Test Checklist
+
+1. Sign in as `head.chef@antilodo.app` and verify kitchen modules are editable.
+2. Sign in as `floor.manager@antilodo.app` and verify floor modules are editable.
+3. Sign in as `manager@antilodo.app` and verify supervision-oriented views and audit history.
+4. Sign in as `gm@antilodo.app` and verify high-level oversight + activity filtering.
+
 ## Structure
 
 - `app/(public)` public pages
-- `app/(protected)` protected route shells and dashboards
-- `app/api/auth/[...nextauth]` auth endpoints
-- `lib/auth.ts` auth configuration
-- `lib/permissions.ts` role and route guards
+- `app/(protected)` protected application routes
+- `features/operations` module actions, queries, permissions, validation
+- `lib/permissions.ts` route and role permission matrix
 - `prisma/schema.prisma` data model
-- `prisma/seed.ts` demo users and operations data
+- `prisma/seed.ts` demo users + operational dataset

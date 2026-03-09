@@ -1,5 +1,4 @@
-﻿import Link from "next/link";
-import { UserRole } from "@prisma/client";
+﻿import { UserRole } from "@prisma/client";
 
 import { createAlertAction } from "@/features/operations/actions";
 import { canManageAlerts, canViewScope } from "@/features/operations/permissions";
@@ -94,4 +93,5 @@ export default async function KitchenAlertsPage({ searchParams }: Props) {
     </div>
   );
 }
+
 

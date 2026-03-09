@@ -1,5 +1,4 @@
-﻿import Link from "next/link";
-import { UserRole } from "@prisma/client";
+﻿import { UserRole } from "@prisma/client";
 
 import { createShiftNoteAction } from "@/features/operations/actions";
 import { canManageShiftNotes, canViewScope } from "@/features/operations/permissions";
@@ -78,4 +77,5 @@ export default async function KitchenShiftNotesPage({ searchParams }: Props) {
     </div>
   );
 }
+
 

@@ -1,5 +1,4 @@
-﻿import Link from "next/link";
-import { UserRole } from "@prisma/client";
+﻿import { UserRole } from "@prisma/client";
 
 import { createOrderAction } from "@/features/operations/actions";
 import { canManageOrders, canViewScope } from "@/features/operations/permissions";
@@ -81,4 +80,5 @@ export default async function KitchenOrdersPage({ searchParams }: Props) {
     </div>
   );
 }
+
 
