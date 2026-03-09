@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client";
+﻿import { UserRole } from "@prisma/client";
 import { AuthOptions, getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
@@ -67,3 +67,4 @@ export const authOptions: AuthOptions = {
 export function auth() {
   return getServerSession(authOptions);
 }
+

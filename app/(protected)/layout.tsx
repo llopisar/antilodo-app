@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+﻿import { ReactNode } from "react";
 
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
@@ -34,3 +34,4 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
     </div>
   );
 }
+

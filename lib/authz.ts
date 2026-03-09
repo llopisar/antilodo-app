@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+﻿import { redirect } from "next/navigation";
 import { UserRole } from "@prisma/client";
 
 import { auth } from "@/lib/auth";
@@ -29,3 +29,4 @@ export function roleLabel(role: UserRole) {
     .map((word) => word[0].toUpperCase() + word.slice(1))
     .join(" ");
 }
+

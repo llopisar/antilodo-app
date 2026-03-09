@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client";
+﻿import { UserRole } from "@prisma/client";
 
 export const ROLE_DASHBOARD_PATHS: Record<UserRole, string> = {
   HEAD_CHEF: "/dashboard/head-chef",
@@ -21,3 +21,4 @@ export type DashboardSlug = keyof typeof DASHBOARD_SLUG_TO_ROLE;
 export function dashboardPathForRole(role: UserRole) {
   return ROLE_DASHBOARD_PATHS[role];
 }
+

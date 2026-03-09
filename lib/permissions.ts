@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client";
+﻿import { UserRole } from "@prisma/client";
 
 import { dashboardPathForRole } from "@/lib/dashboard";
 
@@ -16,7 +16,8 @@ const ALL_ROLES: UserRole[] = [
 ];
 
 const MANAGEMENT_ROLES: UserRole[] = [UserRole.MANAGER, UserRole.GENERAL_MANAGER];
-const KITCHEN_ROLES: UserRole[] = [UserRole.HEAD_CHEF, UserRole.SOUS_CHEF];
+const KITCHEN_AND_MANAGEMENT: UserRole[] = [UserRole.HEAD_CHEF, UserRole.SOUS_CHEF, ...MANAGEMENT_ROLES];
+const FLOOR_AND_MANAGEMENT: UserRole[] = [UserRole.FLOOR_MANAGER, ...MANAGEMENT_ROLES];
 
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   HEAD_CHEF: [
@@ -39,6 +40,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "services:read",
     "services:write",
     "schedules:read",
+    "schedules:write",
     "shift-notes:read",
     "shift-notes:write",
     "tasks:read",
@@ -51,12 +53,21 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "services:write",
     "schedules:read",
     "schedules:write",
+    "shift-notes:read",
+    "shift-notes:write",
     "tasks:read",
     "tasks:write",
     "alerts:read",
     "alerts:write",
   ],
   MANAGER: [
+    "orders:read",
+    "services:read",
+    "schedules:read",
+    "shift-notes:read",
+    "tasks:read",
+    "alerts:read",
+    "alerts:write",
     "overview:read",
     "reports:read",
     "activity:read",
@@ -64,6 +75,13 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "users:manage",
   ],
   GENERAL_MANAGER: [
+    "orders:read",
+    "services:read",
+    "schedules:read",
+    "shift-notes:read",
+    "tasks:read",
+    "alerts:read",
+    "alerts:write",
     "overview:read",
     "reports:read",
     "activity:read",
@@ -75,11 +93,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
 
 export const routeAccessRules: RouteAccessRule[] = [
   { startsWith: "/dashboard", roles: ALL_ROLES },
-  { startsWith: "/kitchen", roles: KITCHEN_ROLES },
-  {
-    startsWith: "/floor",
-    roles: [UserRole.FLOOR_MANAGER, ...MANAGEMENT_ROLES],
-  },
+  { startsWith: "/kitchen", roles: KITCHEN_AND_MANAGEMENT },
+  { startsWith: "/floor", roles: FLOOR_AND_MANAGEMENT },
   { startsWith: "/oversight", roles: MANAGEMENT_ROLES },
   { startsWith: "/settings/profile", roles: ALL_ROLES },
   { startsWith: "/settings/users", roles: MANAGEMENT_ROLES },
@@ -99,3 +114,4 @@ export function canAccessRoute(role: UserRole, pathname: string) {
 export function hasPermission(role: UserRole, permission: string) {
   return ROLE_PERMISSIONS[role].includes(permission);
 }
+

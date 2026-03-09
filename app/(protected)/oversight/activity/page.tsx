@@ -1,4 +1,4 @@
-import { ModuleShell } from "@/components/dashboard/module-shell";
+﻿import { ModuleShell } from "@/components/dashboard/module-shell";
 
 export default function ActivityPage() {
   return (
@@ -13,3 +13,4 @@ export default function ActivityPage() {
     />
   );
 }
+

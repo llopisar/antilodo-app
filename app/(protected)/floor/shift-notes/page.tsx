@@ -17,10 +17,10 @@ import {
 } from "@/components/operations/ui";
 import { requireUser } from "@/lib/authz";
 
-const scope = "kitchen" as const;
+const scope = "floor" as const;
 type Props = { searchParams: Promise<{ q?: string; status?: string }> };
 
-export default async function KitchenShiftNotesPage({ searchParams }: Props) {
+export default async function FloorShiftNotesPage({ searchParams }: Props) {
   const user = await requireUser();
   if (!canViewScope(user.role as UserRole, scope)) return null;
 
@@ -33,14 +33,14 @@ export default async function KitchenShiftNotesPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-4">
-      <ModuleHeader title="Kitchen Shift Notes" description="Shift handoff notes, operational context, and visibility controls." />
+      <ModuleHeader title="Floor Shift Notes" description="Service notes and shift communication for floor operations." />
       <div className="grid gap-3 sm:grid-cols-3">
         <InlineStat label="Notes" value={String(notes.length)} />
         <InlineStat label="Team" value={String(notes.filter((n) => n.visibility === "TEAM").length)} />
         <InlineStat label="Management" value={String(notes.filter((n) => n.visibility === "MANAGEMENT").length)} />
       </div>
 
-      <FilterForm action="/kitchen/shift-notes" query={params.q} status={params.status} statusOptions={["PRIVATE", "TEAM", "MANAGEMENT"]} />
+      <FilterForm action="/floor/shift-notes" query={params.q} status={params.status} statusOptions={["PRIVATE", "TEAM", "MANAGEMENT"]} />
 
       {canManage ? (
         <form action={createShiftNoteAction.bind(null, scope)} className="space-y-3 rounded-lg border bg-card p-4">
@@ -69,7 +69,7 @@ export default async function KitchenShiftNotesPage({ searchParams }: Props) {
             key={note.id}
             title={note.title}
             subtitle={note.content}
-            href={`/kitchen/shift-notes/${note.id}`}
+            href={`/floor/shift-notes/${note.id}`}
             badges={noteVisibilityBadge(note.visibility)}
             meta={`${note.author.name} · ${note.createdAt.toLocaleString("en-US")} · ${note.service?.name ?? "No linked service"}`}
           />
