@@ -1,0 +1,233 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  HEAD_CHEF
+  SOUS_CHEF
+  FLOOR_MANAGER
+  MANAGER
+  GENERAL_MANAGER
+}
+
+enum ServiceStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  BLOCKED
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  ESCALATED
+}
+
+enum ShiftNoteVisibility {
+  PRIVATE
+  TEAM
+  MANAGEMENT
+}
+
+model User {
+  id             String           @id @default(cuid())
+  name           String
+  email          String           @unique
+  passwordHash   String
+  role           UserRole
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  schedules      Schedule[]
+  shiftNotes     ShiftNote[]
+  assignedTasks  Task[]           @relation("TaskAssignee")
+  delegatedTasks Task[]           @relation("TaskAssigner")
+  reportedAlerts AlertIncident[]  @relation("AlertReporter")
+  ownedAlerts    AlertIncident[]  @relation("AlertOwner")
+  activityLogs   ActivityLog[]
+  accounts       Account[]
+  sessions       Session[]
+}
+
+model Service {
+  id          String          @id @default(cuid())
+  name        String
+  serviceDate DateTime
+  shift       String
+  status      ServiceStatus   @default(PLANNED)
+  floorArea   String
+  notes       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  orders      Order[]
+  schedules   Schedule[]
+  shiftNotes  ShiftNote[]
+  tasks       Task[]
+  alerts      AlertIncident[]
+}
+
+model Order {
+  id           String          @id @default(cuid())
+  ticketNumber String          @unique
+  tableLabel   String
+  station      String
+  priority     Int             @default(1)
+  status       OrderStatus     @default(PENDING)
+  summary      String
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  serviceId    String
+  service      Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  tasks        Task[]
+  alerts       AlertIncident[]
+}
+
+model Schedule {
+  id          String   @id @default(cuid())
+  shiftStart  DateTime
+  shiftEnd    DateTime
+  roleAtShift UserRole
+  notes       String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serviceId   String?
+  service     Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  shiftNotes  ShiftNote[]
+
+  @@index([userId, shiftStart])
+}
+
+model ShiftNote {
+  id          String              @id @default(cuid())
+  title       String
+  content     String
+  visibility  ShiftNoteVisibility @default(TEAM)
+  createdAt   DateTime            @default(now())
+  authorId    String
+  author      User                @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  serviceId   String?
+  service     Service?            @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  scheduleId  String?
+  schedule    Schedule?           @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+}
+
+model Task {
+  id            String     @id @default(cuid())
+  title         String
+  description   String
+  status        TaskStatus @default(TODO)
+  dueAt         DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  assignedToId  String
+  assignedTo    User       @relation("TaskAssignee", fields: [assignedToId], references: [id], onDelete: Cascade)
+  assignedById  String
+  assignedBy    User       @relation("TaskAssigner", fields: [assignedById], references: [id], onDelete: Cascade)
+  serviceId     String?
+  service       Service?   @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  orderId       String?
+  order         Order?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  alertIncident AlertIncident?
+
+  @@index([assignedToId, status])
+}
+
+model AlertIncident {
+  id              String        @id @default(cuid())
+  title           String
+  description     String
+  severity        AlertSeverity
+  status          AlertStatus   @default(OPEN)
+  createdAt       DateTime      @default(now())
+  resolvedAt      DateTime?
+  reporterId      String
+  reporter        User          @relation("AlertReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  ownerId         String?
+  owner           User?         @relation("AlertOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  serviceId       String?
+  service         Service?      @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  orderId         String?
+  order           Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  taskId          String?       @unique
+  linkedTask      Task?         @relation(fields: [taskId], references: [id], onDelete: SetNull)
+}
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+  ipAddress  String?
+  userAgent  String?
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
