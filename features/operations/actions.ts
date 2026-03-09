@@ -1,10 +1,11 @@
-﻿"use server";
+"use server";
 
 import { revalidatePath } from "next/cache";
 import { UserRole } from "@prisma/client";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { recordAuditEvent } from "@/lib/activity";
 import {
   alertCreateSchema,
   alertUpdateSchema,
@@ -59,7 +60,23 @@ export async function createOrderAction(scope: ModuleScope, formData: FormData) 
   const parsed = orderCreateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid order data.");
 
-  await db.order.create({ data: parsed.data });
+  const created = await db.order.create({ data: parsed.data });
+
+  await recordAuditEvent({
+    actorId: actor.id,
+    action: "ORDER_CREATED",
+    entityType: "Order",
+    entityId: created.id,
+    after: {
+      ticketNumber: created.ticketNumber,
+      tableLabel: created.tableLabel,
+      station: created.station,
+      status: created.status,
+      priority: created.priority,
+      serviceId: created.serviceId,
+    },
+  });
+
   revalidatePath(pathFor(scope, "orders"));
 }
 
@@ -71,7 +88,34 @@ export async function updateOrderAction(scope: ModuleScope, formData: FormData) 
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid order update.");
 
   const { id, ...payload } = parsed.data;
-  await db.order.update({ where: { id }, data: payload });
+  const before = await db.order.findUnique({ where: { id } });
+  const updated = await db.order.update({ where: { id }, data: payload });
+
+  await recordAuditEvent({
+    actorId: actor.id,
+    action: "ORDER_UPDATED",
+    entityType: "Order",
+    entityId: updated.id,
+    before: before
+      ? {
+          ticketNumber: before.ticketNumber,
+          tableLabel: before.tableLabel,
+          station: before.station,
+          status: before.status,
+          priority: before.priority,
+          serviceId: before.serviceId,
+        }
+      : null,
+    after: {
+      ticketNumber: updated.ticketNumber,
+      tableLabel: updated.tableLabel,
+      station: updated.station,
+      status: updated.status,
+      priority: updated.priority,
+      serviceId: updated.serviceId,
+    },
+  });
+
   revalidatePath(pathFor(scope, "orders"));
   revalidatePath(pathFor(scope, `orders/${id}`));
 }
@@ -118,7 +162,7 @@ export async function createScheduleAction(scope: ModuleScope, formData: FormDat
   const parsed = scheduleCreateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid schedule data.");
 
-  await db.schedule.create({
+  const created = await db.schedule.create({
     data: {
       userId: parsed.data.userId,
       roleAtShift: parsed.data.roleAtShift,
@@ -126,6 +170,21 @@ export async function createScheduleAction(scope: ModuleScope, formData: FormDat
       shiftEnd: toDate(parsed.data.shiftEnd),
       serviceId: norm(parsed.data.serviceId ?? null),
       notes: norm(parsed.data.notes ?? null),
+    },
+  });
+
+  await recordAuditEvent({
+    actorId: actor.id,
+    action: "SCHEDULE_CREATED",
+    entityType: "Schedule",
+    entityId: created.id,
+    after: {
+      userId: created.userId,
+      roleAtShift: created.roleAtShift,
+      shiftStart: created.shiftStart.toISOString(),
+      shiftEnd: created.shiftEnd.toISOString(),
+      serviceId: created.serviceId,
+      notes: created.notes,
     },
   });
 
@@ -140,7 +199,8 @@ export async function updateScheduleAction(scope: ModuleScope, formData: FormDat
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid schedule update.");
 
   const { id, ...payload } = parsed.data;
-  await db.schedule.update({
+  const before = await db.schedule.findUnique({ where: { id } });
+  const updated = await db.schedule.update({
     where: { id },
     data: {
       userId: payload.userId,
@@ -149,6 +209,31 @@ export async function updateScheduleAction(scope: ModuleScope, formData: FormDat
       shiftEnd: toDate(payload.shiftEnd),
       serviceId: norm(payload.serviceId ?? null),
       notes: norm(payload.notes ?? null),
+    },
+  });
+
+  await recordAuditEvent({
+    actorId: actor.id,
+    action: "SCHEDULE_UPDATED",
+    entityType: "Schedule",
+    entityId: updated.id,
+    before: before
+      ? {
+          userId: before.userId,
+          roleAtShift: before.roleAtShift,
+          shiftStart: before.shiftStart.toISOString(),
+          shiftEnd: before.shiftEnd.toISOString(),
+          serviceId: before.serviceId,
+          notes: before.notes,
+        }
+      : null,
+    after: {
+      userId: updated.userId,
+      roleAtShift: updated.roleAtShift,
+      shiftStart: updated.shiftStart.toISOString(),
+      shiftEnd: updated.shiftEnd.toISOString(),
+      serviceId: updated.serviceId,
+      notes: updated.notes,
     },
   });
 
@@ -163,13 +248,26 @@ export async function createShiftNoteAction(scope: ModuleScope, formData: FormDa
   const parsed = shiftNoteCreateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid note data.");
 
-  await db.shiftNote.create({
+  const created = await db.shiftNote.create({
     data: {
       title: parsed.data.title,
       content: parsed.data.content,
       visibility: parsed.data.visibility,
       serviceId: norm(parsed.data.serviceId ?? null),
       authorId: actor.id,
+    },
+  });
+
+  await recordAuditEvent({
+    actorId: actor.id,
+    action: "SHIFT_NOTE_CREATED",
+    entityType: "ShiftNote",
+    entityId: created.id,
+    after: {
+      title: created.title,
+      visibility: created.visibility,
+      serviceId: created.serviceId,
+      authorId: created.authorId,
     },
   });
 
@@ -184,13 +282,33 @@ export async function updateShiftNoteAction(scope: ModuleScope, formData: FormDa
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid note update.");
 
   const { id, ...payload } = parsed.data;
-  await db.shiftNote.update({
+  const before = await db.shiftNote.findUnique({ where: { id } });
+  const updated = await db.shiftNote.update({
     where: { id },
     data: {
       title: payload.title,
       content: payload.content,
       visibility: payload.visibility,
       serviceId: norm(payload.serviceId ?? null),
+    },
+  });
+
+  await recordAuditEvent({
+    actorId: actor.id,
+    action: "SHIFT_NOTE_UPDATED",
+    entityType: "ShiftNote",
+    entityId: updated.id,
+    before: before
+      ? {
+          title: before.title,
+          visibility: before.visibility,
+          serviceId: before.serviceId,
+        }
+      : null,
+    after: {
+      title: updated.title,
+      visibility: updated.visibility,
+      serviceId: updated.serviceId,
     },
   });
 
@@ -205,7 +323,7 @@ export async function createTaskAction(scope: ModuleScope, formData: FormData) {
   const parsed = taskCreateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid task data.");
 
-  await db.task.create({
+  const created = await db.task.create({
     data: {
       title: parsed.data.title,
       description: parsed.data.description,
@@ -215,6 +333,21 @@ export async function createTaskAction(scope: ModuleScope, formData: FormData) {
       dueAt: norm(parsed.data.dueAt ?? null) ? toDate(parsed.data.dueAt as string) : undefined,
       serviceId: norm(parsed.data.serviceId ?? null),
       orderId: norm(parsed.data.orderId ?? null),
+    },
+  });
+
+  await recordAuditEvent({
+    actorId: actor.id,
+    action: "TASK_CREATED",
+    entityType: "Task",
+    entityId: created.id,
+    after: {
+      title: created.title,
+      status: created.status,
+      assignedToId: created.assignedToId,
+      dueAt: created.dueAt?.toISOString() ?? null,
+      serviceId: created.serviceId,
+      orderId: created.orderId,
     },
   });
 
@@ -229,7 +362,8 @@ export async function updateTaskAction(scope: ModuleScope, formData: FormData) {
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid task update.");
 
   const { id, ...payload } = parsed.data;
-  await db.task.update({
+  const before = await db.task.findUnique({ where: { id } });
+  const updated = await db.task.update({
     where: { id },
     data: {
       title: payload.title,
@@ -239,6 +373,31 @@ export async function updateTaskAction(scope: ModuleScope, formData: FormData) {
       dueAt: norm(payload.dueAt ?? null) ? toDate(payload.dueAt as string) : null,
       serviceId: norm(payload.serviceId ?? null),
       orderId: norm(payload.orderId ?? null),
+    },
+  });
+
+  await recordAuditEvent({
+    actorId: actor.id,
+    action: "TASK_UPDATED",
+    entityType: "Task",
+    entityId: updated.id,
+    before: before
+      ? {
+          title: before.title,
+          status: before.status,
+          assignedToId: before.assignedToId,
+          dueAt: before.dueAt?.toISOString() ?? null,
+          serviceId: before.serviceId,
+          orderId: before.orderId,
+        }
+      : null,
+    after: {
+      title: updated.title,
+      status: updated.status,
+      assignedToId: updated.assignedToId,
+      dueAt: updated.dueAt?.toISOString() ?? null,
+      serviceId: updated.serviceId,
+      orderId: updated.orderId,
     },
   });
 
@@ -253,7 +412,7 @@ export async function createAlertAction(scope: ModuleScope, formData: FormData) 
   const parsed = alertCreateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid alert data.");
 
-  await db.alertIncident.create({
+  const created = await db.alertIncident.create({
     data: {
       title: parsed.data.title,
       description: parsed.data.description,
@@ -263,6 +422,21 @@ export async function createAlertAction(scope: ModuleScope, formData: FormData) 
       serviceId: norm(parsed.data.serviceId ?? null),
       orderId: norm(parsed.data.orderId ?? null),
       reporterId: actor.id,
+    },
+  });
+
+  await recordAuditEvent({
+    actorId: actor.id,
+    action: "ALERT_CREATED",
+    entityType: "AlertIncident",
+    entityId: created.id,
+    after: {
+      title: created.title,
+      severity: created.severity,
+      status: created.status,
+      ownerId: created.ownerId,
+      serviceId: created.serviceId,
+      orderId: created.orderId,
     },
   });
 
@@ -277,7 +451,8 @@ export async function updateAlertAction(scope: ModuleScope, formData: FormData) 
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid alert update.");
 
   const { id, ...payload } = parsed.data;
-  await db.alertIncident.update({
+  const before = await db.alertIncident.findUnique({ where: { id } });
+  const updated = await db.alertIncident.update({
     where: { id },
     data: {
       title: payload.title,
@@ -291,7 +466,31 @@ export async function updateAlertAction(scope: ModuleScope, formData: FormData) 
     },
   });
 
+  await recordAuditEvent({
+    actorId: actor.id,
+    action: "ALERT_UPDATED",
+    entityType: "AlertIncident",
+    entityId: updated.id,
+    before: before
+      ? {
+          title: before.title,
+          severity: before.severity,
+          status: before.status,
+          ownerId: before.ownerId,
+          serviceId: before.serviceId,
+          orderId: before.orderId,
+        }
+      : null,
+    after: {
+      title: updated.title,
+      severity: updated.severity,
+      status: updated.status,
+      ownerId: updated.ownerId,
+      serviceId: updated.serviceId,
+      orderId: updated.orderId,
+    },
+  });
+
   revalidatePath(pathFor(scope, "alerts"));
   revalidatePath(pathFor(scope, `alerts/${id}`));
 }
-

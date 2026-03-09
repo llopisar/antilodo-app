@@ -1,4 +1,4 @@
-﻿import { redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { UserRole } from "@prisma/client";
 
 import { auth } from "@/lib/auth";
@@ -22,6 +22,14 @@ export async function requireRouteAccess(pathname: string) {
   return user;
 }
 
+export async function requireManagementUser() {
+  const user = await requireUser();
+  if (user.role !== UserRole.MANAGER && user.role !== UserRole.GENERAL_MANAGER) {
+    redirect("/forbidden");
+  }
+  return user;
+}
+
 export function roleLabel(role: UserRole) {
   return role
     .toLowerCase()
@@ -29,4 +37,3 @@ export function roleLabel(role: UserRole) {
     .map((word) => word[0].toUpperCase() + word.slice(1))
     .join(" ");
 }
-
