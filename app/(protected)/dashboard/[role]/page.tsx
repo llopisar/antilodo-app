@@ -1,53 +1,32 @@
-import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+﻿import { notFound, redirect } from "next/navigation";
 import { UserRole } from "@prisma/client";
 
-import { MetricCard, SectionPanel } from "@/components/dashboard/metric-card";
-import { DASHBOARD_SLUG_TO_ROLE } from "@/lib/dashboard";
-import { navByRole } from "@/lib/navigation";
+import { MetricCard } from "@/components/dashboard/metric-card";
+import {
+  AlertsPanel,
+  GeneralStatusWidgets,
+  OperationalSummaryPanel,
+  OrderQueuePanel,
+  RecentActivityPanel,
+  SchedulePreviewPanel,
+  ServiceStatusPanel,
+  ShiftNotesPanel,
+  TaskListPanel,
+} from "@/components/dashboard/panels";
 import { requireUser, roleLabel } from "@/lib/authz";
-
-const roleFocus: Record<UserRole, string> = {
-  HEAD_CHEF: "Kitchen execution, service readiness, and station performance",
-  SOUS_CHEF: "Station flow, task completion, and shift handoff quality",
-  FLOOR_MANAGER: "Floor service quality, staffing coordination, and incident response",
-  MANAGER: "Cross-team supervision, KPI monitoring, and operational approvals",
-  GENERAL_MANAGER: "Executive oversight, trends, and strategic incident governance",
-};
-
-const roleKpis: Record<UserRole, Array<{ title: string; value: string; description: string }>> = {
-  HEAD_CHEF: [
-    { title: "Kitchen Queue", value: "18", description: "Orders currently active in preparation." },
-    { title: "Ready to Pass", value: "6", description: "Tickets ready for final service pass." },
-    { title: "Station Alerts", value: "1", description: "Operational alert requiring kitchen follow-up." },
-  ],
-  SOUS_CHEF: [
-    { title: "Assigned Tickets", value: "9", description: "Orders directly assigned to your stations." },
-    { title: "Shift Tasks", value: "7", description: "Operational tasks still pending completion." },
-    { title: "Handoffs", value: "2", description: "Notes pending confirmation for next shift." },
-  ],
-  FLOOR_MANAGER: [
-    { title: "Floor Coverage", value: "96%", description: "Current staffing coverage across service zones." },
-    { title: "Open Service Issues", value: "2", description: "Incidents currently open on the floor." },
-    { title: "Table Turn Pace", value: "58m", description: "Average current table turnover duration." },
-  ],
-  MANAGER: [
-    { title: "Operational Health", value: "92%", description: "Current composite status across core modules." },
-    { title: "Open Escalations", value: "3", description: "Items requiring manager-level attention." },
-    { title: "Report Queue", value: "4", description: "Reports pending review and sign-off." },
-  ],
-  GENERAL_MANAGER: [
-    { title: "Daily Readiness", value: "94%", description: "Current readiness across service periods." },
-    { title: "Critical Incidents", value: "1", description: "Critical operational incidents still unresolved." },
-    { title: "Weekly Trend", value: "+4.2%", description: "Week-over-week performance trend." },
-  ],
-};
-
-const quickLinkClass =
-  "inline-flex h-7 items-center justify-center rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium transition-colors hover:bg-muted";
+import { DASHBOARD_SLUG_TO_ROLE } from "@/lib/dashboard";
+import { getRoleDashboardData } from "@/lib/dashboard-data";
 
 type DashboardRolePageProps = {
   params: Promise<{ role: keyof typeof DASHBOARD_SLUG_TO_ROLE }>;
+};
+
+const roleFocus: Record<UserRole, string> = {
+  HEAD_CHEF: "Kitchen operations center for orders, service execution, shifts, and critical alerts.",
+  SOUS_CHEF: "Execution-focused kitchen view with assigned tasks and operational coordination details.",
+  FLOOR_MANAGER: "Front-of-house coordination view for service flow, staffing, notes, and alerts.",
+  MANAGER: "Operational oversight view for cross-team monitoring, summaries, and recent activity.",
+  GENERAL_MANAGER: "Executive operations view with high-level status, audit insights, and activity visibility.",
 };
 
 export default async function DashboardRolePage({ params }: DashboardRolePageProps) {
@@ -63,36 +42,78 @@ export default async function DashboardRolePage({ params }: DashboardRolePagePro
     redirect("/forbidden");
   }
 
-  const quickLinks = navByRole(user.role).filter((item) => item.href !== "/dashboard").slice(0, 6);
-  const metrics = roleKpis[user.role];
+  const data = await getRoleDashboardData(user.role, user.id);
+
+  const isKitchenRole = user.role === UserRole.HEAD_CHEF || user.role === UserRole.SOUS_CHEF;
+  const isFloorManager = user.role === UserRole.FLOOR_MANAGER;
+  const isManager = user.role === UserRole.MANAGER;
+  const isGeneralManager = user.role === UserRole.GENERAL_MANAGER;
 
   return (
     <div className="space-y-6">
-      <div>
+      <section>
         <h1 className="text-2xl font-semibold tracking-tight">{roleLabel(user.role)} Dashboard</h1>
-        <p className="text-sm text-muted-foreground">{roleFocus[user.role]}</p>
-      </div>
+        <p className="mt-1 text-sm text-muted-foreground">{roleFocus[user.role]}</p>
+      </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        {metrics.map((metric) => (
-          <MetricCard
-            key={metric.title}
-            title={metric.title}
-            value={metric.value}
-            description={metric.description}
-          />
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {data.metrics.map((metric) => (
+          <MetricCard key={metric.title} title={metric.title} value={metric.value} description={metric.description} />
         ))}
       </section>
 
-      <SectionPanel title="Quick Access" description="Modules available for your current role.">
-        <div className="flex flex-wrap gap-2">
-          {quickLinks.map((item) => (
-            <Link key={item.href} href={item.href} className={quickLinkClass}>
-              {item.label}
-            </Link>
-          ))}
-        </div>
-      </SectionPanel>
+      <GeneralStatusWidgets widgets={data.statusWidgets} />
+
+      <section className="grid gap-4 xl:grid-cols-2">
+        {isKitchenRole ? <OrderQueuePanel orders={data.orders} /> : null}
+        {isKitchenRole ? (
+          <TaskListPanel
+            title={user.role === UserRole.HEAD_CHEF ? "Active Kitchen Tasks" : "Assigned Kitchen Tasks"}
+            description={
+              user.role === UserRole.HEAD_CHEF
+                ? "Kitchen tasks across the current team scope."
+                : "Your assigned kitchen execution tasks."
+            }
+            tasks={data.tasks}
+          />
+        ) : null}
+
+        {isFloorManager ? (
+          <TaskListPanel
+            title="Service Coordination Items"
+            description="Open floor coordination tasks and service actions."
+            tasks={data.tasks}
+          />
+        ) : null}
+
+        {(isFloorManager || isKitchenRole) ? <ServiceStatusPanel services={data.services} /> : null}
+
+        {(isManager || isGeneralManager) ? <OperationalSummaryPanel summaries={data.operationalSummaries} /> : null}
+        {(isManager || isGeneralManager) ? <AlertsPanel alerts={data.alerts} /> : null}
+        {(isManager || isGeneralManager) ? <RecentActivityPanel activities={data.activities} /> : null}
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-3">
+        {(!isManager && !isGeneralManager) ? <AlertsPanel alerts={data.alerts} /> : null}
+        <SchedulePreviewPanel schedules={data.schedules} />
+        <ShiftNotesPanel notes={data.shiftNotes} />
+      </section>
+
+      {(isGeneralManager || isManager) ? (
+        <section className="grid gap-4 xl:grid-cols-2">
+          <ServiceStatusPanel services={data.services} />
+          <TaskListPanel
+            title={isGeneralManager ? "Operational Workload" : "Monitoring Queue"}
+            description={
+              isGeneralManager
+                ? "Open tasks requiring organizational awareness and follow-up."
+                : "Open tasks to monitor execution across teams."
+            }
+            tasks={data.tasks}
+          />
+        </section>
+      ) : null}
     </div>
   );
 }
+
